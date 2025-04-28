@@ -1,5 +1,10 @@
+#!/bin/bash
+
 echo "Welcome to PT-Sim-Clock, the enhanced page table simulator"
 echo "Using input file $1"
+
+# Run the Python implementation
+./pt_sim.py "$1"
 
 # This is where you would run your program
 
