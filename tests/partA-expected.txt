@@ -1,0 +1,4 @@
+0x40
+0x20
+DISK
+SEGFAULT

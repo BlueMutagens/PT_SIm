@@ -59,7 +59,8 @@ class PageTable:
                 frame = self.handle_page_fault(page_number)
                 physical_addr = (frame << self.offset_bits) | offset
                 return physical_addr
-
+        if entry.permissions == 0:
+            return "SEGFAULT"
         # Mark the page as used
         entry.used = True
 
@@ -68,44 +69,34 @@ class PageTable:
         return physical_addr
 
     def handle_page_fault(self, page_number):
-        # For the first page fault, use the frame in the entry
-        if not any(entry.valid for entry in self.entries):
-            self.entries[page_number].valid = True
-            return self.entries[page_number].frame
-
-        # Use the clock algorithm to find a victim
+    # Use the clock algorithm to find a victim
         while True:
-            # Check the current page pointed to by the clock hand
             if self.clock_hand >= len(self.entries):
                 self.clock_hand = 0
 
-            entry = self.entries[self.clock_hand]
+            candidate = self.entries[self.clock_hand]
 
             # Skip invalid entries
-            if not entry.valid:
+            if not candidate.valid:
                 self.clock_hand += 1
                 continue
 
-            # If the page hasn't been used, select it as the victim
-            if not entry.used:
-                # Save the frame number before invalidating
-                victim_frame = entry.frame
+            # Found a victim if not used
+            if not candidate.used:
+                victim_frame = candidate.frame
+                candidate.valid = False
 
-                # Invalidate the victim page
-                entry.valid = False
+                # Replace victim with the new page
+                new_entry = self.entries[page_number]
+                new_entry.valid = True
+                new_entry.used = True
+                new_entry.frame = victim_frame
 
-                # Validate the new page and update its frame
-                self.entries[page_number].valid = True
-                self.entries[page_number].frame = victim_frame
-                self.entries[page_number].used = True
-
-                # Move the clock hand
                 self.clock_hand += 1
-
                 return victim_frame
 
-            # If the page has been used, give it a second chance
-            entry.used = False
+            # Otherwise, give second chance
+            candidate.used = False
             self.clock_hand += 1
 
 
@@ -143,27 +134,30 @@ def main():
 
     # Process virtual addresses from stdin
     print("Enter virtual addresses (decimal or hex with 0x prefix):")
-    for line in sys.stdin:
-        line = line.strip()
-        if not line:
-            continue
+    try:
+        for line in sys.stdin:
+            line = line.strip()
+            if not line:
+                continue
 
-        try:
-            # Parse virtual address
-            if line.startswith('0x'):
-                virtual_addr = int(line[2:], 16)
-            else:
-                virtual_addr = int(line)
+            try:
+                line = line.split()[0]  # Remove inline comments or trailing tokens
+                if line.lower().startswith('0x'):
+                    virtual_addr = int(line, 16)
+                else:
+                    virtual_addr = int(line)
 
-            # Translate address
-            result = page_table.translate_address(virtual_addr)
-            if isinstance(result, int):
-                print(f"0x{result:x}")  # Print physical address in hex
-            else:
-                print(result)  # Print DISK, SEGFAULT, or PAGEFAULT
+                result = page_table.translate_address(virtual_addr)
+                if isinstance(result, int):
+                    print(f"0x{result:02x}")
+                else:
+                    print(result)
 
-        except ValueError:
-            print("Invalid address format")
+            except ValueError:
+                print("Invalid address format")
+
+    except KeyboardInterrupt:
+        print("\n[INFO] User exited with Ctrl+C.")
 
 
 if __name__ == "__main__":
