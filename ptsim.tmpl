@@ -10,8 +10,8 @@
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Sean Belingheri <belingheri@sonoma.edu>
+Joshua Lozano <lozanoj@sonoma.edu>
 
 ---- PRELIMINARIES ----
 
@@ -39,17 +39,20 @@ FirstName LastName <email@domain.example>
 >> Translate the following sequence of address requests using the method
 >> described for Part A.
 >>
->> 0x05
->> 0x7F
->> 0x3B
->> 0x7F
->> 0x40
+>> 0x05 -> DISK
+>> 0x7F -> 0x5f
+>> 0x3B -> 0x9b
+>> 0x7F -> 0x5f
+>> 0x40 -> 0xa0
 >>
 
 >> A2. It is ok if your program just reads every row of the input file,
 >> but it is possible to compute how many rows you might expect.
 >> Show a computation to determine how many rows are in the page table
 >> using the first row of the input file shows above: 7 8 32
+
+Page Size = 32 bytes. Offset = log2(32) = 5. Page number bits = Virtual - offset = 7 - 5 = 2.
+Number of pages = 2^(page number bits) = 2^2 = 4. So we can expect 4 by doing 2^(virtual - log2(page size))
 
 
 ---- DATA STRUCTURES ----
@@ -58,18 +61,63 @@ FirstName LastName <email@domain.example>
 >> `struct' member, global or static variable, `typedef', or enumeration.
 >> Identify the purpose of each in 25 words or less.
 
+class PageTableEntry:
+    def __init__(self, valid, permissions, frame, used):
+        self.valid = valid == '1'        # Boolean indicating if page is in memory
+        self.permissions = int(permissions) # Access permissions for the page
+        self.frame = int(frame)          # Physical frame number
+        self.used = used == '1'          # Recently used flag for Clock algorithm
+        
+class PageTable:
+    def __init__(self, n_bits, m_bits, page_size, use_clock=False):
+        self.n_bits = n_bits             # Virtual address bits
+        self.m_bits = m_bits             # Physical address bits
+        self.page_size = page_size       # Size of each page in bytes
+        self.entries = []                # List of page table entries
+        self.use_clock = use_clock       # Flag to use Clock algorithm
+        self.offset_bits = 0             # Number of bits for offset
+        self.clock_hand = 0              # Clock hand for replacement algorithm
+
 ---- FUNCTIONS ----
 
 >> A4: Provide a prototype and documentation for each function
 >> you have introduced to support this portion of the project.
 >> Use the Google Style Guide for function documentation.
 
+def read_page_table_file(filename, use_clock=False):
+    """
+    Reads and parses the page table description file.
+    
+    Args:
+        filename: String path to the page table file
+        use_clock: Boolean indicating if Clock algorithm should be used
+        
+    Returns:
+        PageTable object containing the parsed entries
+    """
+
+def translate_address(self, virtual_addr):
+    """
+    Translates a virtual address to its corresponding physical address.
+    
+    Args:
+        virtual_addr: Integer virtual address to translate
+        
+    Returns:
+        Integer physical address if translation successful
+        "SEGFAULT" if page permissions are 0 or page number is invalid
+        "DISK" if page is not in memory but has permissions (when not using Clock)
+    """
+    
 ---- ALGORITHMS ----
 
 >> A5. Describe your general strategy for managing bit-wise
 >> transformations of data, and relevant support functions you used
 >> to accomplish this.
 
+Extract page number using right shift: page_number = virtual_addr >> offset_bits
+Extract offset using bitwise AND with mask: offset = virtual_addr & ((1 << offset_bits) - 1)
+Calculate physical address by combining frame number and offset: physical_addr = (frame << offset_bits) | offset
 
 
 
@@ -89,11 +137,11 @@ FirstName LastName <email@domain.example>
 >> Translate the following sequence of address requests using the method
 >> described for Part B.
 >>
->> 0x05
->> 0x7F
->> 0x3B
->> 0x7F
->> 0x40
+>> 0x05 -> PAGEFAULT 0x85
+>> 0x7F -> 0x5f
+>> 0x3B -> PAGEFAULT 0xbb
+>> 0x7F -> 0x5f
+>> 0x40 -> PAGEFAULT 0x80
 >>
 
 ---- DATA STRUCTURES ----
@@ -102,6 +150,11 @@ FirstName LastName <email@domain.example>
 >> `struct' member, global or static variable, `typedef', or enumeration.
 >> Identify the purpose of each in 25 words or less.
 
+From PageTable
+self.use_clock = use_clock  # Boolean flag to enable Clock algorithm
+self.clock_hand = 0         # Index tracking current position in Clock algorithm
+
+
 
 ---- FUNCTIONS ----
 
@@ -109,18 +162,43 @@ FirstName LastName <email@domain.example>
 >> you have introduced to support this portion of the project.
 >> Use the Google Style Guide for function documentation.
 
+def handle_page_fault(self, page_number):
+    """
+    Implements the Clock (Second Chance) page replacement algorithm.
+    
+    Finds a victim page to replace when a page fault occurs by examining
+    the 'used' bit of each valid page and selecting the first one with
+    used=False after giving pages with used=True a second chance.
+    
+    Args:
+        page_number: Integer page number that caused the fault
+        
+    Returns:
+        Integer frame number that was allocated to the faulting page
+    """
+
 ---- ALGORITHMS ----
 
 >> B4. Describe the data structure you used to search through the frames
 >> following the clock rotation, and how you might improve efficiency
 >> if this was an actual implementation rather than a simulation.
 
+The implementation uses a simple integer (clock_hand) as a pointer to traverse the page 
+table entries list. For a real implementation, improvements could include:
+1) Using a circular linked list for more efficient traversal
+2) Implementing a local vs. global replacement policy based on process priority
+3) Using an improved clock algorithm like CLOCK-pro (https://www.usenix.org/legacy/event/usenix05/tech/general/full_papers/jiang/jiang.pdf)
 ---- RATIONALE ----
 
 >> B5. Did you need to handle any ambiguous scenarios or corner cases
 >> for the Clock algorithm, left unspecified in the algorithm's
 >> description? Explain any judgements you used in implementing
 >> unclear or unspecified behavior.
+
+1) Empty Frames: We assumed all frames to be initially allocated. In the real world
+we would need to track free frames.
+2) Initial clock hand position: We assume 0 to be the starting position, though any 
+starting position is theoretically valid.
 
 
                SURVEY QUESTIONS
@@ -135,11 +213,21 @@ the quarter.
 >> In your opinion, was this assignment, or any one of the problems
 >> in it, too easy or too hard?  Did it take too long or too little time?
 
+Just the right amount. Since this assignment came at the end of the semester, without us 
+really knowing about it, any harder would've been brutal as we all had allocated this time
+for other end of semester projects that we had known about since the semester start.
+
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
+
+Yes, implementing clock gave me a much better understanding of clock. 
 
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
 >> find any of our guidance to be misleading?
+
+No. I will say that a hint along the lines of "implementation should be straightforward" will
+help, simply because there were portions that felt too easy, and made us believe we were
+missing something.
 
 >> Any other comments?
