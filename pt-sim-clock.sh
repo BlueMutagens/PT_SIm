@@ -1,4 +1,6 @@
 #!/bin/bash
+echo "Welcome to PT-Sim-Clock, the enhanced page table simulator"
+echo "Using input file $1"
 
 # Run the Python implementation with clock algorithm
 ./pt_sim.py --clock "$1"
