@@ -1,8 +1,5 @@
 #!/bin/bash
 
-echo "Welcome to PT-Sim, the page table simulator"
-echo "Using input file $1"
-
 # Run the Python implementation
 ./pt_sim.py "$1"
 

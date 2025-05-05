@@ -133,6 +133,8 @@ def main():
     page_table = read_page_table_file(args.input_file, args.clock)
 
     # Process virtual addresses from stdin
+    print("Welcome to PT-Sim, the page table simulator")
+    print("Using input file", args.input_file)
     print("Enter virtual addresses (decimal or hex with 0x prefix):")
     try:
         for line in sys.stdin:

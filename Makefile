@@ -8,18 +8,17 @@ ptsim: pt-sim.sh pt_sim.py
 	chmod +x pt_sim.py
 	cp pt-sim.sh ptsim
 	chmod +x ptsim
-	@echo -e ${msg} >> ptsim
 
 # Make sure Python script is executable and copy shell script
 ptsim-clock: pt-sim-clock.sh pt_sim.py
 	chmod +x pt_sim.py
 	cp pt-sim-clock.sh ptsim-clock
 	chmod +x ptsim-clock
-	@echo -e ${msg} >> ptsim-clock
 
 # Clean up generated files
 clean:
 	rm -f ptsim ptsim-clock
+	rm -rf __pycache__
 
 
 
